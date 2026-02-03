@@ -1,0 +1,77 @@
+version: '3.8'
+
+# =============================================================================
+# FINANCE APP - Fully Isolated Deployment
+# =============================================================================
+# Deploy:   docker-compose -f docker-compose.finance.yml up -d
+# Stop:     docker-compose -f docker-compose.finance.yml down
+# Rebuild:  docker-compose -f docker-compose.finance.yml up -d --build
+# Logs:     docker logs -f finance-wildfly
+#           docker logs -f finance-frontend
+# =============================================================================
+
+services:
+  # ---------------------------------------------------------------------------
+  # FINANCE FRONTEND (Nginx) - Serves Finance UI
+  # Accessible via: finance.temcobank.com → Host Nginx → localhost:8091
+  # ---------------------------------------------------------------------------
+  finance-frontend:
+    image: nginx:alpine
+    container_name: finance-frontend
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8091:80"   # Only localhost, Host Nginx will proxy
+    volumes:
+      - ./finance-html:/usr/share/nginx/html:ro          # Frontend build
+      - ./finance-nginx.conf:/etc/nginx/conf.d/default.conf:ro  # Nginx config
+    depends_on:
+      - finance-wildfly
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    networks:
+      - finance-network
+
+  # ---------------------------------------------------------------------------
+  # FINANCE BACKEND (WildFly) - Runs temco-finance.war
+  # Internal only - accessed by finance-frontend via Docker network
+  # ---------------------------------------------------------------------------
+  finance-wildfly:
+    build:
+      context: .
+      dockerfile: Dockerfile.wildfly
+    container_name: finance-wildfly
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8086:8080"   # HTTP (localhost only for debugging)
+      - "127.0.0.1:9993:9990"   # Admin Console (localhost only)
+    extra_hosts:
+      - "host.docker.internal:host-gateway"   # Allow container to reach host services
+    environment:
+      - WILDFLY_USER=admin
+      - WILDFLY_PASSWORD=admin123
+      - DB_HOST=172.17.0.1                    # Docker Gateway to HOST MariaDB
+      - DB_PORT=3306
+      - DB_NAME=temco_system
+      - DB_USER=root
+      - DB_PASSWORD=${DB_PASSWORD:-temco123}
+      - JAVA_OPTS=-Xms512m -Xmx1024m -XX:MetaspaceSize=96M -XX:MaxMetaspaceSize=256m
+    volumes:
+      - ./deployments/finance:/opt/jboss/wildfly/standalone/deployments
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/temco-finance/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - finance-network
+
+# =============================================================================
+# NETWORKS
+# =============================================================================
+networks:
+  # Isolated network for finance containers only
+  finance-network:
+    driver: bridge
