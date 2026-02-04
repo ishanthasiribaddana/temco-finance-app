@@ -107,7 +107,9 @@ app.get('/api/partner-types', async (req, res) => {
 app.get('/api/partners', async (req, res) => {
   try {
     const typeId = req.query.typeId;
-    let query = `SELECT DISTINCT fp.* FROM fin_partner fp`;
+    let query = `SELECT DISTINCT fp.*, gup.nic, gup.email as user_email, gup.mobile_no as phone, gup.home_phone
+                 FROM fin_partner fp
+                 LEFT JOIN general_user_profile gup ON fp.user_profile_id = gup.id`;
     let params = [];
     
     if (typeId && typeId !== 'all') {
@@ -122,9 +124,10 @@ app.get('/api/partners', async (req, res) => {
       id: p.id,
       partnerCode: p.partner_code,
       partnerName: p.partner_name,
+      nic: p.nic || '',
       taxId: p.tax_id || '',
-      email: p.email || '',
-      phone: p.phone || '',
+      email: p.user_email || p.email || '',
+      phone: p.phone || p.home_phone || '',
       address: p.address || '',
       creditLimit: Number(p.credit_limit) || 0,
       paymentTermsDays: p.payment_terms_days || 30,

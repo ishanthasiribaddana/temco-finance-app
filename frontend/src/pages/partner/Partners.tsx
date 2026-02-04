@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Routes, Route, useNavigate } from 'react-router-dom'
-import { Plus, Download, Upload, Eye, Edit2, Phone, Mail, MapPin, Building2, Loader2 } from 'lucide-react'
+import { Plus, Download, Upload, Eye, Edit2, Phone, Mail, MapPin, Building2, Loader2, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button, Card, Modal, Input, Select, Badge, SearchInput } from '../../components/ui'
 import axios from 'axios'
 
@@ -9,6 +9,7 @@ interface Partner {
   partnerCode: string
   partnerName: string
   partnerType: 'CUSTOMER' | 'VENDOR' | 'BOTH'
+  nic: string
   taxId: string
   creditLimit: number
   paymentTermsDays: number
@@ -59,6 +60,8 @@ function PartnerList() {
   const [partnerTypes, setPartnerTypes] = useState<{id: number, typeCode: string, typeName: string}[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const pageSize = 20
 
   useEffect(() => {
     const fetchTypes = async () => {
@@ -102,14 +105,30 @@ function PartnerList() {
     return matchesSearch
   })
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 animate-spin text-primary-500" />
-        <span className="ml-2 text-secondary-500">Loading partners...</span>
-      </div>
-    )
-  }
+  // Pagination
+  const totalPages = Math.ceil(filtered.length / pageSize)
+  const startIndex = (currentPage - 1) * pageSize
+  const paginatedPartners = filtered.slice(startIndex, startIndex + pageSize)
+
+  // Reset to page 1 when filter/search changes
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [search, typeFilter])
+
+  // Skeleton loading component
+  const SkeletonRow = () => (
+    <tr className="animate-pulse">
+      <td className="px-4 py-3"><div className="h-4 bg-secondary-200 rounded w-6 mx-auto"></div></td>
+      <td className="px-4 py-3"><div className="h-4 bg-secondary-200 rounded w-24"></div></td>
+      <td className="px-4 py-3"><div className="h-4 bg-secondary-200 rounded w-28"></div></td>
+      <td className="px-4 py-3"><div className="h-4 bg-secondary-200 rounded w-32"></div></td>
+      <td className="px-4 py-3"><div className="h-4 bg-secondary-200 rounded w-28"></div></td>
+      <td className="px-4 py-3"><div className="h-4 bg-secondary-200 rounded w-36"></div></td>
+      <td className="px-4 py-3"><div className="h-4 bg-secondary-200 rounded w-20 ml-auto"></div></td>
+      <td className="px-4 py-3"><div className="h-4 bg-secondary-200 rounded w-16 mx-auto"></div></td>
+      <td className="px-4 py-3"><div className="h-4 bg-secondary-200 rounded w-12 ml-auto"></div></td>
+    </tr>
+  )
 
   return (
     <div className="space-y-6">
@@ -142,26 +161,34 @@ function PartnerList() {
               ))}
             </select>
           </div>
-          <span className="text-sm text-secondary-500">{filtered.length} partners</span>
+          <span className="text-sm text-secondary-500">Showing {startIndex + 1}-{Math.min(startIndex + pageSize, filtered.length)} of {filtered.length} partners</span>
         </div>
 
         <div className="border border-secondary-200 rounded-lg overflow-hidden">
           <table className="w-full">
             <thead className="bg-secondary-50 border-b">
               <tr>
+                <th className="px-4 py-3 text-center text-xs font-semibold text-secondary-600 uppercase w-12">#</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-secondary-600 uppercase">Code</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-secondary-600 uppercase">NIC</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-secondary-600 uppercase">Name</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-secondary-600 uppercase">Contact</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-secondary-600 uppercase">Email</th>
                 <th className="px-4 py-3 text-right text-xs font-semibold text-secondary-600 uppercase">Credit Limit</th>
                 <th className="px-4 py-3 text-center text-xs font-semibold text-secondary-600 uppercase">Status</th>
                 <th className="px-4 py-3 text-right text-xs font-semibold text-secondary-600 uppercase">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-secondary-100">
-              {filtered.map(partner => (
+              {loading ? (
+                Array.from({ length: 10 }).map((_, i) => <SkeletonRow key={i} />)
+              ) : paginatedPartners.map((partner, index) => (
                 <tr key={partner.id} className="hover:bg-secondary-50 cursor-pointer" onClick={() => navigate(`/partners/${partner.id}`)}>
+                  <td className="px-4 py-3 text-center text-sm text-secondary-500">{startIndex + index + 1}</td>
                   <td className="px-4 py-3 font-mono text-sm font-medium text-primary-600">{partner.partnerCode}</td>
+                  <td className="px-4 py-3 text-sm text-secondary-600">{partner.nic}</td>
                   <td className="px-4 py-3 font-medium">{partner.partnerName}</td>
+                  <td className="px-4 py-3 text-sm text-secondary-600">{partner.phone}</td>
                   <td className="px-4 py-3 text-sm text-secondary-600">{partner.email}</td>
                   <td className="px-4 py-3 text-right font-mono">LKR {partner.creditLimit.toLocaleString()}</td>
                   <td className="px-4 py-3 text-center"><Badge variant={partner.isActive ? 'success' : 'default'}>{partner.isActive ? 'Active' : 'Inactive'}</Badge></td>
@@ -176,6 +203,50 @@ function PartnerList() {
             </tbody>
           </table>
         </div>
+
+        {/* Pagination Controls */}
+        {!loading && totalPages > 1 && (
+          <div className="flex items-center justify-between mt-4 pt-4 border-t">
+            <div className="text-sm text-secondary-500">
+              Page {currentPage} of {totalPages}
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="flex items-center gap-1 px-3 py-1.5 text-sm border rounded-lg hover:bg-secondary-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <ChevronLeft className="w-4 h-4" /> Prev
+              </button>
+              <div className="flex gap-1">
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  let pageNum = i + 1
+                  if (totalPages > 5) {
+                    if (currentPage <= 3) pageNum = i + 1
+                    else if (currentPage >= totalPages - 2) pageNum = totalPages - 4 + i
+                    else pageNum = currentPage - 2 + i
+                  }
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => setCurrentPage(pageNum)}
+                      className={`w-8 h-8 text-sm rounded-lg ${currentPage === pageNum ? 'bg-primary-500 text-white' : 'hover:bg-secondary-100'}`}
+                    >
+                      {pageNum}
+                    </button>
+                  )
+                })}
+              </div>
+              <button
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="flex items-center gap-1 px-3 py-1.5 text-sm border rounded-lg hover:bg-secondary-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Next <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
       </Card>
 
       <Modal isOpen={showModal} onClose={() => setShowModal(false)} title={selectedPartner ? 'Edit Partner' : 'New Partner'} size="lg">
