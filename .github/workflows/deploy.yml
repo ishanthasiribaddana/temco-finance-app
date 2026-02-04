@@ -108,6 +108,16 @@ jobs:
           set -e
           
           APP_DIR="/opt/temco/finance-app"
+          GIT_REPO="https://github.com/ishanthasiribaddana/temco-finance-app.git"
+          
+          echo "📦 Setting up application directory..."
+          if [ ! -d "$APP_DIR" ]; then
+            echo "Creating directory and cloning repository..."
+            sudo mkdir -p /opt/temco
+            cd /opt/temco
+            sudo git clone $GIT_REPO finance-app
+            sudo chown -R $USER:$USER $APP_DIR
+          fi
           
           echo "📦 Pulling latest code..."
           cd $APP_DIR
