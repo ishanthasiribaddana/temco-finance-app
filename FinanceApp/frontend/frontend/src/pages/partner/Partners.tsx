@@ -59,14 +59,13 @@ function PartnerList() {
   const [partners, setPartners] = useState<Partner[]>([])
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
-  const [_error] = useState<string | null>(null)
   const [counts, setCounts] = useState({ total: 0, customers: 0, vendors: 0 })
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(true)
   const pageSize = 20
 
   const [allPartners, setAllPartners] = useState<Partner[]>([])
-  const [partnerTypes, setPartnerTypes] = useState<{id: number, typeCode: string, typeName: string}[]>([])
+  const [partnerTypes, setPartnerTypes] = useState<{id: number, typeCode: string, typeName: string}[]>([])  // Partner types from API
 
   // Filter allPartners based on search and type filter
   const filteredAll = allPartners.filter((p: Partner) => {
