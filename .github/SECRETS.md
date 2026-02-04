@@ -2,15 +2,16 @@
 
 ## Required Secrets for CI/CD Pipeline
 
-Configure these secrets in your GitHub repository:
-**Settings → Secrets and variables → Actions → New repository secret**
+Configure these secrets at **GitHub Organization level** so they can be shared across all TEMCO repositories (Admin App, Finance App, Lending App, etc.):
 
-| Secret Name       | Description                          | Example Value           |
-|-------------------|--------------------------------------|-------------------------|
-| `SERVER_HOST`     | Production server IP address         | `109.123.227.166`       |
-| `SERVER_USER`     | SSH username for deployment          | `root`                  |
-| `SSH_PRIVATE_KEY` | Private SSH key for server access    | `-----BEGIN OPENSSH...` |
-| `DB_PASSWORD`     | Database password for MariaDB        | `temco123`              |
+**Organization Settings → Secrets and variables → Actions → New organization secret**
+
+| Secret Name       | Description                          | Example Value           | Repository Access    |
+|-------------------|--------------------------------------|-------------------------|----------------------|
+| `SERVER_HOST`     | Production server IP address         | `109.123.227.166`       | All repositories     |
+| `SERVER_USER`     | SSH username for deployment          | `root`                  | All repositories     |
+| `SSH_PRIVATE_KEY` | Private SSH key for server access    | `-----BEGIN OPENSSH...` | All repositories     |
+| `DB_PASSWORD`     | Database password for MariaDB        | `temco123`              | All repositories     |
 
 ## Setup Instructions
 
@@ -18,26 +19,31 @@ Configure these secrets in your GitHub repository:
 
 ```bash
 # On your local machine
-ssh-keygen -t ed25519 -C "github-actions-finance-app" -f ~/.ssh/github_deploy_key
+ssh-keygen -t ed25519 -C "github-actions-temco-deploy" -f ~/.ssh/github_deploy_key
 
 # Copy public key to server
 ssh-copy-id -i ~/.ssh/github_deploy_key.pub root@109.123.227.166
 ```
 
-### 2. Add Private Key to GitHub
+### 2. Add Organization Secrets
+
+1. Go to your GitHub Organization page
+2. Click **Settings → Secrets and variables → Actions**
+3. Click **New organization secret**
+4. Add each secret with "All repositories" or "Selected repositories" access
 
 ```bash
-# Copy the private key content
+# Copy the private key content for SSH_PRIVATE_KEY
 cat ~/.ssh/github_deploy_key
 ```
 
-Then paste the entire content (including `-----BEGIN...` and `-----END...`) into the `SSH_PRIVATE_KEY` secret.
+Paste the entire content (including `-----BEGIN...` and `-----END...`) into the `SSH_PRIVATE_KEY` secret.
 
 ### 3. Create GitHub Environment
 
 1. Go to repository **Settings → Environments**
 2. Click **New environment**
-3. Name it `production`
+3. Name it `finance-production`
 4. Optionally add protection rules:
    - Required reviewers
    - Wait timer
