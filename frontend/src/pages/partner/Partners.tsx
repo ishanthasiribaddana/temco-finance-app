@@ -18,11 +18,6 @@ interface Partner {
   isActive: boolean
 }
 
-const mockVendors: Partner[] = [
-  { id: 1001, partnerCode: 'V001', partnerName: 'ABC Suppliers Ltd', partnerType: 'VENDOR', taxId: 'TIN-12345678', creditLimit: 500000, paymentTermsDays: 30, email: 'info@abcsuppliers.com', phone: '+94 11 234 5678', isActive: true },
-  { id: 1002, partnerCode: 'V002', partnerName: 'Office Mart', partnerType: 'VENDOR', taxId: 'TIN-11112222', creditLimit: 100000, paymentTermsDays: 15, email: 'sales@officemart.lk', phone: '+94 77 123 4567', isActive: true },
-]
-
 const typeColors: Record<string, 'info' | 'success' | 'purple'> = { CUSTOMER: 'info', VENDOR: 'success', BOTH: 'purple' }
 
 function PartnerForm({ partner, onClose }: { partner?: Partner | null; onClose: () => void }) {
@@ -61,39 +56,51 @@ function PartnerList() {
   const [typeFilter, setTypeFilter] = useState<string>('all')
   const [selectedPartner, setSelectedPartner] = useState<Partner | null>(null)
   const [partners, setPartners] = useState<Partner[]>([])
+  const [partnerTypes, setPartnerTypes] = useState<{id: number, typeCode: string, typeName: string}[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const fetchTypes = async () => {
+      try {
+        const typesRes = await axios.get('/api/partner-types')
+        setPartnerTypes(typesRes.data)
+      } catch (err) {
+        console.error('Failed to fetch partner types:', err)
+        setPartnerTypes([
+          { id: 1, typeCode: 'CUSTOMER_VENDOR', typeName: 'Customer & Vendor' },
+          { id: 2, typeCode: 'MEMBER', typeName: 'Member' },
+          { id: 3, typeCode: 'EMPLOYEE', typeName: 'Employee' },
+          { id: 4, typeCode: 'LOAN_CUSTOMER', typeName: 'Loan Customer' }
+        ])
+      }
+    }
+    fetchTypes()
+  }, [])
 
   useEffect(() => {
     const fetchPartners = async () => {
       setLoading(true)
       try {
-        // Fetch customers from API (general_user_profile table)
-        const response = await axios.get('/api/customers')
-        const customers: Partner[] = response.data
-        // Combine with mock vendors
-        setPartners([...customers, ...mockVendors])
+        const url = typeFilter === 'all' ? '/api/partners' : `/api/partners?typeId=${typeFilter}`
+        const partnersRes = await axios.get(url)
+        setPartners(partnersRes.data)
         setError(null)
       } catch (err) {
-        console.error('Failed to fetch customers:', err)
-        // Fallback to mock vendors only if API fails
-        setPartners(mockVendors)
-        setError('Failed to load customers from database. Showing vendors only.')
+        console.error('Failed to fetch partners:', err)
+        setPartners([])
+        setError('Failed to load partners from database.')
       } finally {
         setLoading(false)
       }
     }
     fetchPartners()
-  }, [])
+  }, [typeFilter])
 
   const filtered = partners.filter((p: Partner) => {
     const matchesSearch = p.partnerCode.toLowerCase().includes(search.toLowerCase()) || p.partnerName.toLowerCase().includes(search.toLowerCase())
-    const matchesType = typeFilter === 'all' || p.partnerType === typeFilter
-    return matchesSearch && matchesType
+    return matchesSearch
   })
-
-  const customers = partners.filter((p: Partner) => p.partnerType === 'CUSTOMER' || p.partnerType === 'BOTH').length
-  const vendors = partners.filter((p: Partner) => p.partnerType === 'VENDOR' || p.partnerType === 'BOTH').length
 
   if (loading) {
     return (
@@ -120,9 +127,7 @@ function PartnerList() {
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
-        <Card onClick={() => setTypeFilter('CUSTOMER')} className="cursor-pointer hover:border-primary-300"><div className="text-center"><p className="text-2xl font-bold text-blue-600">{customers}</p><p className="text-sm text-secondary-500">Customers</p></div></Card>
-        <Card onClick={() => setTypeFilter('VENDOR')} className="cursor-pointer hover:border-primary-300"><div className="text-center"><p className="text-2xl font-bold text-green-600">{vendors}</p><p className="text-sm text-secondary-500">Vendors</p></div></Card>
+      <div className="grid grid-cols-1 gap-4">
         <Card onClick={() => setTypeFilter('all')} className="cursor-pointer hover:border-primary-300"><div className="text-center"><p className="text-2xl font-bold text-secondary-900">{partners.length}</p><p className="text-sm text-secondary-500">Total Partners</p></div></Card>
       </div>
 
@@ -131,7 +136,10 @@ function PartnerList() {
           <div className="flex items-center gap-3">
             <SearchInput value={search} onChange={setSearch} placeholder="Search partners..." className="w-72" />
             <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className="border border-secondary-300 rounded-lg px-3 py-2 text-sm">
-              <option value="all">All Types</option><option value="CUSTOMER">Customers</option><option value="VENDOR">Vendors</option><option value="BOTH">Both</option>
+              <option value="all">All Types</option>
+              {partnerTypes.map(type => (
+                <option key={type.id} value={type.id}>{type.typeName}</option>
+              ))}
             </select>
           </div>
           <span className="text-sm text-secondary-500">{filtered.length} partners</span>
@@ -143,7 +151,6 @@ function PartnerList() {
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-secondary-600 uppercase">Code</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-secondary-600 uppercase">Name</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-secondary-600 uppercase">Type</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-secondary-600 uppercase">Contact</th>
                 <th className="px-4 py-3 text-right text-xs font-semibold text-secondary-600 uppercase">Credit Limit</th>
                 <th className="px-4 py-3 text-center text-xs font-semibold text-secondary-600 uppercase">Status</th>
@@ -155,7 +162,6 @@ function PartnerList() {
                 <tr key={partner.id} className="hover:bg-secondary-50 cursor-pointer" onClick={() => navigate(`/partners/${partner.id}`)}>
                   <td className="px-4 py-3 font-mono text-sm font-medium text-primary-600">{partner.partnerCode}</td>
                   <td className="px-4 py-3 font-medium">{partner.partnerName}</td>
-                  <td className="px-4 py-3"><Badge variant={typeColors[partner.partnerType]}>{partner.partnerType}</Badge></td>
                   <td className="px-4 py-3 text-sm text-secondary-600">{partner.email}</td>
                   <td className="px-4 py-3 text-right font-mono">LKR {partner.creditLimit.toLocaleString()}</td>
                   <td className="px-4 py-3 text-center"><Badge variant={partner.isActive ? 'success' : 'default'}>{partner.isActive ? 'Active' : 'Inactive'}</Badge></td>
@@ -181,7 +187,26 @@ function PartnerList() {
 
 function PartnerDetail() {
   const navigate = useNavigate()
-  const partner = mockVendors[0]
+  const [partner, setPartner] = useState<Partner | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchPartner = async () => {
+      try {
+        const response = await axios.get('/api/partners')
+        if (response.data.length > 0) setPartner(response.data[0])
+      } catch (err) {
+        console.error('Failed to fetch partner:', err)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchPartner()
+  }, [])
+
+  if (loading || !partner) {
+    return <div className="flex items-center justify-center h-64"><Loader2 className="w-8 h-8 animate-spin text-primary-500" /></div>
+  }
 
   return (
     <div className="space-y-6">
