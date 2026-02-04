@@ -7,11 +7,11 @@ app.use(cors());
 app.use(express.json());
 
 const dbConfig = {
-  host: '127.0.0.1',
-  port: 3306,
-  user: 'root',
-  password: 'temco123',
-  database: 'temco_system'
+  host: process.env.DB_HOST || '127.0.0.1',
+  port: parseInt(process.env.DB_PORT) || 3306,
+  user: process.env.DB_USER || 'root',
+  password: process.env.DB_PASSWORD || 'temco123',
+  database: process.env.DB_NAME || 'temco_system'
 };
 
 let pool;
