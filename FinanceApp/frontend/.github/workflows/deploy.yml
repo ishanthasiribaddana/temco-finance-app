@@ -127,9 +127,15 @@ jobs:
           docker stop finance-frontend finance-api 2>/dev/null || true
           docker rm -f finance-frontend finance-api 2>/dev/null || true
           
-          echo "🐳 Rebuilding Docker containers..."
-          cd $APP_DIR/docker
-          docker-compose -f docker-compose.finance.yml up -d --build --force-recreate --remove-orphans
+          echo "🐳 Rebuilding Docker images..."
+          cd $APP_DIR
+          docker build --no-cache -t docker_finance-frontend:latest -f docker/Dockerfile.frontend .
+          docker build --no-cache -t docker_finance-api:latest -f docker/Dockerfile.api .
+          
+          echo "🐳 Starting containers..."
+          docker network create docker_finance-network 2>/dev/null || true
+          docker run -d --name finance-api --network docker_finance-network -p 127.0.0.1:8086:8086 --restart unless-stopped --add-host=host.docker.internal:host-gateway docker_finance-api:latest
+          docker run -d --name finance-frontend --network docker_finance-network -p 8091:80 --restart unless-stopped docker_finance-frontend:latest
           
           echo "⏳ Waiting for containers to be healthy..."
           sleep 10
