@@ -124,9 +124,13 @@ jobs:
           git fetch origin
           git reset --hard origin/master
           
-          echo "🐳 Rebuilding Docker containers..."
+          echo "🐳 Stopping and removing existing containers..."
           cd $APP_DIR/docker
-          docker-compose -f docker-compose.finance.yml down || true
+          docker stop finance-api finance-frontend 2>/dev/null || true
+          docker rm -f finance-api finance-frontend 2>/dev/null || true
+          docker network rm docker_finance-network 2>/dev/null || true
+          
+          echo "🐳 Rebuilding Docker containers..."
           docker-compose -f docker-compose.finance.yml up -d --build --force-recreate
           
           echo "⏳ Waiting for containers to be healthy..."
