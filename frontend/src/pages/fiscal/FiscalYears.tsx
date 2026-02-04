@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Routes, Route, useNavigate } from 'react-router-dom'
-import { Plus, Calendar, Lock, Unlock, ChevronRight, Edit2, Eye } from 'lucide-react'
+import { Plus, Calendar, Lock, Unlock, Edit2, Eye } from 'lucide-react'
 import { Button, Card, Modal, Input, Badge } from '../../components/ui'
 
 const mockFiscalYears = [

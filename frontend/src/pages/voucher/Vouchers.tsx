@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Routes, Route, useNavigate } from 'react-router-dom'
-import { Plus, Download, Eye, Edit2, Printer, Send, Check, X, Trash2 } from 'lucide-react'
+import { Plus, Download, Eye, Edit2, Printer, Check, X, Trash2 } from 'lucide-react'
 import { Button, Card, Modal, Input, Select, Badge, SearchInput } from '../../components/ui'
 
 // Mock data

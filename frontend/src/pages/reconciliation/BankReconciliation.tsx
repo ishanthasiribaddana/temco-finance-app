@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Routes, Route, useNavigate } from 'react-router-dom'
-import { Plus, Download, Check, X, Eye, Edit2, CheckCircle2, AlertCircle } from 'lucide-react'
-import { Button, Card, Modal, Input, Select, Badge, SearchInput } from '../../components/ui'
+import { Plus, Download, Check, Eye, CheckCircle2, AlertCircle } from 'lucide-react'
+import { Button, Card, Modal, Input, Select, Badge } from '../../components/ui'
 
 const mockReconciliations = [
   { id: 1, reconciliationNumber: 'BR-2026-0012', bankAccountName: 'Commercial Bank - Current', statementDate: '2026-01-31', statementBalance: 2500000, bookBalance: 2485000, adjustedBalance: 2500000, status: 'COMPLETED', periodName: 'January 2026' },

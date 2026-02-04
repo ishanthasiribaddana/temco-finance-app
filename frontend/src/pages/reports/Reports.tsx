@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { FileText, Download, TrendingUp, TrendingDown, DollarSign, PieChart, BarChart3, FileSpreadsheet, Calendar, Filter } from 'lucide-react'
-import { Button, Card, Select, Input, Badge } from '../../components/ui'
+import { FileText, Download, TrendingUp, TrendingDown, DollarSign, PieChart, BarChart3, FileSpreadsheet, Calendar } from 'lucide-react'
+import { Button, Card, Select, Input } from '../../components/ui'
 
 const reportCategories = [
   { id: 'financial', name: 'Financial Statements', icon: FileText, reports: [

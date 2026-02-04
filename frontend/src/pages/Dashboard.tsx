@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom'
-import { DollarSign, TrendingUp, TrendingDown, FileText, AlertCircle, Plus, ArrowRight, Clock, CheckCircle, XCircle, BarChart3 } from 'lucide-react'
+import { DollarSign, TrendingUp, TrendingDown, FileText, Plus, ArrowRight, Clock, CheckCircle, BarChart3 } from 'lucide-react'
 import { Button, Card, Badge } from '../components/ui'
 
 const stats = [

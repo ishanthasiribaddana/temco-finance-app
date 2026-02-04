@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Routes, Route, useNavigate } from 'react-router-dom'
-import { Plus, Download, Filter, Eye, Edit2, Copy, RotateCcw, Trash2, Check, X } from 'lucide-react'
-import { Button, Card, Modal, Input, Select, Badge, SearchInput, Tabs } from '../../components/ui'
+import { Plus, Download, Eye, Edit2, Copy, RotateCcw, Trash2, Check, X } from 'lucide-react'
+import { Button, Card, Modal, Input, Select, Badge, SearchInput } from '../../components/ui'
 import type { JournalEntry, JournalEntryLine, ChartOfAccount } from '../../types'
 
 // Mock accounts for dropdowns
