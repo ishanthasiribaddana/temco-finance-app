@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Routes, Route, useNavigate } from 'react-router-dom'
-import { Plus, Download, Upload, Eye, Edit2, Phone, Mail, MapPin, Building2, Loader2, ChevronLeft, ChevronRight } from 'lucide-react'
-import { Button, Card, Modal, Input, Select, Badge, SearchInput } from '../../components/ui'
+import { Plus, Download, Upload, Eye, Edit2, Phone, Mail, MapPin, Building2, Loader2, ChevronLeft, ChevronRight, Search, CheckCircle, User, AlertCircle } from 'lucide-react'
+import { Button, Card, Modal, Input, Badge, SearchInput } from '../../components/ui'
 import axios from 'axios'
 
 interface Partner {
@@ -21,31 +21,209 @@ interface Partner {
 
 const typeColors: Record<string, 'info' | 'success' | 'purple'> = { CUSTOMER: 'info', VENDOR: 'success', BOTH: 'purple' }
 
-function PartnerForm({ partner, onClose }: { partner?: Partner | null; onClose: () => void }) {
+interface VerifiedUser {
+  userProfileId: number
+  fullName: string
+  nic: string
+  phone: string
+  email: string
+}
+
+function PartnerForm({ partner, onClose, partnerTypes, onSuccess }: { 
+  partner?: Partner | null; 
+  onClose: () => void;
+  partnerTypes: {id: number, typeCode: string, typeName: string}[];
+  onSuccess?: () => void;
+}) {
+  const [step, setStep] = useState(1)
+  const [nic, setNic] = useState('')
+  const [verifying, setVerifying] = useState(false)
+  const [verifiedUser, setVerifiedUser] = useState<VerifiedUser | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [selectedTypes, setSelectedTypes] = useState<number[]>([])
+  const [saving, setSaving] = useState(false)
+
+  const handleVerify = async () => {
+    if (!nic.trim()) {
+      setError('Please enter a NIC number')
+      return
+    }
+    setVerifying(true)
+    setError(null)
+    try {
+      const res = await axios.get(`/api/lookup-by-nic/${nic.trim()}`)
+      setVerifiedUser(res.data)
+      setStep(2)
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to verify NIC')
+      setVerifiedUser(null)
+    } finally {
+      setVerifying(false)
+    }
+  }
+
+  const handleSave = async () => {
+    if (selectedTypes.length === 0) {
+      setError('Please select at least one partner type')
+      return
+    }
+    setSaving(true)
+    setError(null)
+    try {
+      await axios.post('/api/partners', {
+        userProfileId: verifiedUser?.userProfileId,
+        partnerTypes: selectedTypes
+      })
+      onSuccess?.()
+      onClose()
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to create partner')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const toggleType = (typeId: number) => {
+    setSelectedTypes(prev => 
+      prev.includes(typeId) 
+        ? prev.filter(id => id !== typeId)
+        : [...prev, typeId]
+    )
+  }
+
+  // Edit mode - show original form
+  if (partner) {
+    return (
+      <div className="space-y-6">
+        <div className="grid grid-cols-2 gap-4">
+          <Input label="Partner Code" defaultValue={partner.partnerCode} disabled required />
+          <Input label="Partner Name" defaultValue={partner.partnerName} required />
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <Input label="Email" type="email" defaultValue={partner.email} />
+          <Input label="Phone" defaultValue={partner.phone} />
+        </div>
+        <div className="flex justify-end gap-3 pt-4 border-t">
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button>Save Changes</Button>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-3 gap-4">
-        <Input label="Partner Code" defaultValue={partner?.partnerCode || 'Auto-generated'} disabled={!!partner} required />
-        <Input label="Partner Name" defaultValue={partner?.partnerName} placeholder="Full legal name" required />
-        <Select label="Partner Type" options={[{ value: 'CUSTOMER', label: 'Customer' }, { value: 'VENDOR', label: 'Vendor' }, { value: 'BOTH', label: 'Both' }]} defaultValue={partner?.partnerType || 'VENDOR'} required />
+      {/* Step Indicator */}
+      <div className="flex items-center justify-center gap-2 mb-6">
+        {[1, 2, 3].map(s => (
+          <div key={s} className="flex items-center">
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+              step >= s ? 'bg-primary-500 text-white' : 'bg-secondary-200 text-secondary-500'
+            }`}>{s}</div>
+            {s < 3 && <div className={`w-12 h-1 ${step > s ? 'bg-primary-500' : 'bg-secondary-200'}`} />}
+          </div>
+        ))}
       </div>
-      <div className="grid grid-cols-3 gap-4">
-        <Input label="Tax ID" defaultValue={partner?.taxId} placeholder="e.g., TIN-12345678" />
-        <Input label="Credit Limit" type="number" defaultValue={partner?.creditLimit} placeholder="0.00" />
-        <Input label="Payment Terms (Days)" type="number" defaultValue={partner?.paymentTermsDays || 30} />
-      </div>
-      <div className="grid grid-cols-2 gap-4">
-        <Input label="Email" type="email" defaultValue={partner?.email} placeholder="email@company.com" />
-        <Input label="Phone" defaultValue={partner?.phone} placeholder="+94 11 xxx xxxx" />
-      </div>
-      <div className="grid grid-cols-1 gap-4">
-        <Input label="Address" placeholder="Full business address" />
-      </div>
-      <Select label="Default Account" options={[{ value: '', label: 'Select default account...' }, { value: 5, label: '1103 - Accounts Receivable' }, { value: 9, label: '2101 - Accounts Payable' }]} />
-      <div className="flex justify-end gap-3 pt-4 border-t">
-        <Button variant="outline" onClick={onClose}>Cancel</Button>
-        <Button>{partner ? 'Save Changes' : 'Create Partner'}</Button>
-      </div>
+
+      {error && (
+        <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+          <AlertCircle className="w-4 h-4" />
+          {error}
+        </div>
+      )}
+
+      {/* Step 1: Enter NIC */}
+      {step === 1 && (
+        <div className="space-y-4">
+          <div className="text-center mb-4">
+            <User className="w-12 h-12 mx-auto text-secondary-400 mb-2" />
+            <h3 className="text-lg font-medium">Enter NIC Number</h3>
+            <p className="text-sm text-secondary-500">We'll verify the person's details</p>
+          </div>
+          <Input 
+            label="NIC Number" 
+            value={nic} 
+            onChange={(e) => setNic(e.target.value)}
+            placeholder="e.g., 199012345678 or 901234567V"
+            required
+          />
+          <div className="flex justify-end gap-3 pt-4 border-t">
+            <Button variant="outline" onClick={onClose}>Cancel</Button>
+            <Button onClick={handleVerify} disabled={verifying}>
+              {verifying ? <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Verifying...</> : <><Search className="w-4 h-4 mr-2" /> Verify</>}
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Step 2: Verification */}
+      {step === 2 && verifiedUser && (
+        <div className="space-y-4">
+          <div className="text-center mb-4">
+            <CheckCircle className="w-12 h-12 mx-auto text-green-500 mb-2" />
+            <h3 className="text-lg font-medium">Person Verified</h3>
+            <p className="text-sm text-secondary-500">Please confirm the details below</p>
+          </div>
+          <div className="bg-secondary-50 rounded-lg p-4 space-y-3">
+            <div className="flex justify-between">
+              <span className="text-secondary-500">Name</span>
+              <span className="font-medium">{verifiedUser.fullName}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-secondary-500">NIC</span>
+              <span className="font-mono">{verifiedUser.nic}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-secondary-500">Contact</span>
+              <span>{verifiedUser.phone || '-'}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-secondary-500">Email</span>
+              <span>{verifiedUser.email || '-'}</span>
+            </div>
+          </div>
+          <div className="flex justify-between gap-3 pt-4 border-t">
+            <Button variant="outline" onClick={() => { setStep(1); setVerifiedUser(null); setError(null); }}>Back</Button>
+            <Button onClick={() => setStep(3)}>Continue</Button>
+          </div>
+        </div>
+      )}
+
+      {/* Step 3: Select Partner Types */}
+      {step === 3 && (
+        <div className="space-y-4">
+          <div className="text-center mb-4">
+            <h3 className="text-lg font-medium">Select Partner Type(s)</h3>
+            <p className="text-sm text-secondary-500">Choose one or more types for {verifiedUser?.fullName}</p>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            {partnerTypes.map(type => (
+              <label 
+                key={type.id} 
+                className={`flex items-center gap-3 p-3 border rounded-lg cursor-pointer transition-colors ${
+                  selectedTypes.includes(type.id) 
+                    ? 'border-primary-500 bg-primary-50' 
+                    : 'border-secondary-200 hover:border-secondary-300'
+                }`}
+              >
+                <input 
+                  type="checkbox" 
+                  checked={selectedTypes.includes(type.id)}
+                  onChange={() => toggleType(type.id)}
+                  className="w-4 h-4 text-primary-500 rounded"
+                />
+                <span className="font-medium">{type.typeName}</span>
+              </label>
+            ))}
+          </div>
+          <div className="flex justify-between gap-3 pt-4 border-t">
+            <Button variant="outline" onClick={() => setStep(2)}>Back</Button>
+            <Button onClick={handleSave} disabled={saving || selectedTypes.length === 0}>
+              {saving ? <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Saving...</> : 'Save Partner'}
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -99,6 +277,17 @@ function PartnerList() {
     }
     fetchPartners()
   }, [typeFilter])
+
+  const refreshPartners = () => {
+    setLoading(true)
+    const url = typeFilter === 'all' ? '/api/partners' : `/api/partners?typeId=${typeFilter}`
+    axios.get(url).then(res => {
+      setPartners(res.data)
+      setError(null)
+    }).catch(() => {
+      setError('Failed to load partners')
+    }).finally(() => setLoading(false))
+  }
 
   const filtered = partners.filter((p: Partner) => {
     const matchesSearch = p.partnerCode.toLowerCase().includes(search.toLowerCase()) || p.partnerName.toLowerCase().includes(search.toLowerCase())
@@ -250,7 +439,7 @@ function PartnerList() {
       </Card>
 
       <Modal isOpen={showModal} onClose={() => setShowModal(false)} title={selectedPartner ? 'Edit Partner' : 'New Partner'} size="lg">
-        <PartnerForm partner={selectedPartner} onClose={() => setShowModal(false)} />
+        <PartnerForm partner={selectedPartner} onClose={() => setShowModal(false)} partnerTypes={partnerTypes} onSuccess={refreshPartners} />
       </Modal>
     </div>
   )

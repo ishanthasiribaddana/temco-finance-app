@@ -8,16 +8,21 @@ export default {
     extend: {
       colors: {
         primary: {
-          50: '#f0f9ff',
-          100: '#e0f2fe',
-          200: '#bae6fd',
-          300: '#7dd3fc',
-          400: '#38bdf8',
-          500: '#0ea5e9',
-          600: '#0284c7',
-          700: '#0369a1',
-          800: '#075985',
-          900: '#0c4a6e',
+          50: '#e8e9fb',
+          100: '#c5c8f5',
+          200: '#9ea3ee',
+          300: '#777ee7',
+          400: '#5a62e1',
+          500: '#0C1AD0',  // Temco Blue
+          600: '#0a17bb',
+          700: '#0813a3',
+          800: '#060f8b',
+          900: '#040a63',
+        },
+        temco: {
+          blue: '#0C1AD0',
+          yellow: '#FFEC00',
+          pink: '#E91E8C',
         },
         secondary: {
           50: '#f8fafc',

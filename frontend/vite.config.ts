@@ -12,8 +12,9 @@ export default defineConfig({
   server: {
     port: 3002,
     proxy: {
+      // All API endpoints -> WildFly (Java EE)
       '/api': {
-        target: 'http://localhost:8086',
+        target: 'http://localhost:8080/temco-api',
         changeOrigin: true,
       },
     },
