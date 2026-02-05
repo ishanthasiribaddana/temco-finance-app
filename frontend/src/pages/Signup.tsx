@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom'
 import { Loader2, CheckCircle, AlertCircle, Search, ArrowLeft } from 'lucide-react'
 import axios from 'axios'
 
+// Build: 2026-02-05-v2 - Password fields enabled
 // Temco Bank Logo Component
 const TemcoLogo = () => (
   <div className="flex flex-col items-center">
