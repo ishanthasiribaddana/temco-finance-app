@@ -16,8 +16,9 @@ COPY docker/module.xml /opt/jboss/wildfly/modules/org/mariadb/main/
 RUN chown -R jboss:jboss /opt/jboss/wildfly/modules/org/mariadb
 USER jboss
 
-# Copy CLI script to configure datasource
-COPY --chown=jboss:jboss docker/configure-datasource.cli /opt/jboss/wildfly/bin/
+# Copy and run CLI script to configure datasource at build time
+COPY --chown=jboss:jboss docker/configure-datasource.cli /tmp/configure-datasource.cli
+RUN /opt/jboss/wildfly/bin/jboss-cli.sh --file=/tmp/configure-datasource.cli
 
 # Copy the WAR file
 COPY --chown=jboss:jboss temco-api/target/temco-api.war /opt/jboss/wildfly/standalone/deployments/
@@ -29,5 +30,5 @@ EXPOSE 8080 9990
 HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=5 \
     CMD curl -f http://localhost:8080/temco-api/api/health || exit 1
 
-# Run CLI configuration then start WildFly
+# Start WildFly
 CMD ["/opt/jboss/wildfly/bin/standalone.sh", "-b", "0.0.0.0", "-bmanagement", "0.0.0.0"]

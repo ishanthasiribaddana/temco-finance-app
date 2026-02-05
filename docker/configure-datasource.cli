@@ -1,17 +1,9 @@
-# WildFly CLI script to configure MariaDB datasource
-# This script is embedded but not auto-executed - datasource config via persistence.xml
+embed-server --std-out=echo
 
 # Add MariaDB driver
 /subsystem=datasources/jdbc-driver=mariadb:add(driver-name=mariadb,driver-module-name=org.mariadb,driver-class-name=org.mariadb.jdbc.Driver)
 
-# Add datasource
-data-source add \
-    --name=TemcoDS \
-    --jndi-name=java:jboss/datasources/TemcoDS \
-    --driver-name=mariadb \
-    --connection-url=jdbc:mariadb://${env.DB_HOST:host.docker.internal}:${env.DB_PORT:3306}/${env.DB_NAME:temco_system} \
-    --user-name=${env.DB_USER:temco_user} \
-    --password=${env.DB_PASSWORD:temco123} \
-    --min-pool-size=5 \
-    --max-pool-size=20 \
-    --enabled=true
+# Add datasource with JNDI name java:/TemcoDS
+/subsystem=datasources/data-source=TemcoDS:add(jndi-name="java:/TemcoDS",driver-name=mariadb,connection-url="jdbc:mariadb://host.docker.internal:3306/temco_system",user-name=temco_user,password=temco123,min-pool-size=5,max-pool-size=20,enabled=true)
+
+stop-embedded-server
