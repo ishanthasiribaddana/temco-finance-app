@@ -1,0 +1,30 @@
+# WildFly 26.1.3 with Java 17 for Temco Finance API
+FROM quay.io/wildfly/wildfly:26.1.3.Final-jdk17
+
+# Set environment variables
+ENV WILDFLY_USER=admin \
+    WILDFLY_PASS=admin \
+    DB_HOST=host.docker.internal \
+    DB_PORT=3306 \
+    DB_NAME=temco_system \
+    DB_USER=temco_user \
+    DB_PASSWORD=temco123
+
+# Copy MariaDB driver
+COPY --chown=jboss:jboss docker/mariadb-java-client-3.1.4.jar /opt/jboss/wildfly/standalone/deployments/
+
+# Copy standalone configuration with datasource
+COPY --chown=jboss:jboss docker/standalone-temco.xml /opt/jboss/wildfly/standalone/configuration/standalone.xml
+
+# Copy the WAR file
+COPY --chown=jboss:jboss temco-api/target/temco-api.war /opt/jboss/wildfly/standalone/deployments/
+
+# Expose ports
+EXPOSE 8080 9990
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:8080/temco-api/api/health || exit 1
+
+# Start WildFly
+CMD ["/opt/jboss/wildfly/bin/standalone.sh", "-b", "0.0.0.0", "-bmanagement", "0.0.0.0"]

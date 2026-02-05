@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  # WildFly Java EE Backend
+  finance-api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.wildfly
+    container_name: finance-api
+    environment:
+      - DB_HOST=host.docker.internal
+      - DB_PORT=3306
+      - DB_NAME=temco_system
+      - DB_USER=temco_user
+      - DB_PASSWORD=temco123
+      - TZ=Asia/Colombo
+    ports:
+      - "127.0.0.1:8087:8080"
+      - "127.0.0.1:9991:9990"
+    networks:
+      - finance-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/temco-api/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+
+  # Nginx + React Frontend
+  finance-frontend:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.frontend
+    container_name: finance-frontend
+    ports:
+      - "127.0.0.1:8091:80"
+    networks:
+      - finance-network
+    depends_on:
+      finance-api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+networks:
+  finance-network:
+    driver: bridge
+    name: finance-network
