@@ -120,31 +120,32 @@ public class AuthResource {
     @Path("/signup")
     public Response signup(SignupRequest request) {
         if (request.getNic() == null || request.getFirstName() == null || 
-            request.getLastName() == null || request.getEmail() == null) {
-            return errorResponse(400, "All fields are required");
+            request.getLastName() == null || request.getEmail() == null ||
+            request.getPassword() == null || request.getPassword().isEmpty()) {
+            return errorResponse(400, "All fields are required including password");
+        }
+
+        if (request.getPassword().length() < 6) {
+            return errorResponse(400, "Password must be at least 6 characters");
         }
 
         AuthService.SignupResult result = authService.signup(
             request.getNic(),
             request.getFirstName(),
             request.getLastName(),
-            request.getEmail()
+            request.getEmail(),
+            request.getPassword()
         );
 
         if (!result.success()) {
             return errorResponse(409, result.error());
         }
 
-        // Log temp password (in production, send via email)
-        System.out.println("[SIGNUP] User " + request.getNic() + " (" + request.getEmail() + 
-            ") - Temp Password: " + result.tempPassword() + " (hashed in DB)");
-
         Map<String, Object> response = new HashMap<>();
         response.put("success", true);
         response.put("userId", result.userId());
         response.put("email", request.getEmail());
-        response.put("message", "Registration successful! Password sent to " + 
-            request.getEmail().substring(0, 3) + "***@" + request.getEmail().split("@")[1]);
+        response.put("message", "Registration successful! You can now login with your email and password.");
 
         return Response.ok(response).build();
     }

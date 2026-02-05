@@ -138,7 +138,7 @@ public class AuthService {
         }
     }
 
-    public SignupResult signup(String nic, String firstName, String lastName, String email) {
+    public SignupResult signup(String nic, String firstName, String lastName, String email, String password) {
         // Check if NIC exists
         Long nicCount = em.createQuery("SELECT COUNT(u) FROM GeneralUserProfile u WHERE u.nic = :nic", Long.class)
             .setParameter("nic", nic)
@@ -157,9 +157,9 @@ public class AuthService {
             return new SignupResult(false, "This email is already registered", null, null);
         }
 
-        // Generate temp password
-        String tempPassword = PasswordUtil.generateTempPassword();
-        String hashedPassword = PasswordUtil.hashPassword(tempPassword);
+        // Use user-provided password or generate temp password
+        String userPassword = (password != null && !password.isEmpty()) ? password : PasswordUtil.generateTempPassword();
+        String hashedPassword = PasswordUtil.hashPassword(userPassword);
         String fullName = firstName + " " + lastName;
 
         // Create user profile
@@ -186,7 +186,7 @@ public class AuthService {
         userLogin.setUpdatedAt(LocalDateTime.now());
         em.persist(userLogin);
 
-        return new SignupResult(true, null, profile.getId(), tempPassword);
+        return new SignupResult(true, null, profile.getId(), null);
     }
 
     public boolean checkNicExists(String nic) {

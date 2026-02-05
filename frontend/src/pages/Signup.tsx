@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { Loader2, CheckCircle, AlertCircle, Search, ArrowLeft } from 'lucide-react'
 import axios from 'axios'
@@ -32,7 +32,9 @@ export default function Signup() {
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
-    email: ''
+    email: '',
+    password: '',
+    confirmPassword: ''
   })
   const [registering, setRegistering] = useState(false)
   const [success, setSuccess] = useState(false)
@@ -68,8 +70,18 @@ export default function Signup() {
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (!formData.firstName.trim() || !formData.lastName.trim() || !formData.email.trim()) {
+    if (!formData.firstName.trim() || !formData.lastName.trim() || !formData.email.trim() || !formData.password) {
       setError('All fields are required')
+      return
+    }
+
+    if (formData.password.length < 6) {
+      setError('Password must be at least 6 characters')
+      return
+    }
+
+    if (formData.password !== formData.confirmPassword) {
+      setError('Passwords do not match')
       return
     }
     
@@ -81,7 +93,8 @@ export default function Signup() {
         nic: nic.trim(),
         firstName: formData.firstName.trim(),
         lastName: formData.lastName.trim(),
-        email: formData.email.trim()
+        email: formData.email.trim(),
+        password: formData.password
       })
       setMaskedEmail(res.data.message)
       setSuccess(true)
@@ -91,6 +104,25 @@ export default function Signup() {
       setRegistering(false)
     }
   }
+
+  // Auto-redirect to login after successful registration
+  const [countdown, setCountdown] = useState(5)
+  
+  useEffect(() => {
+    if (success) {
+      const timer = setInterval(() => {
+        setCountdown(prev => {
+          if (prev <= 1) {
+            clearInterval(timer)
+            navigate('/login')
+            return 0
+          }
+          return prev - 1
+        })
+      }, 1000)
+      return () => clearInterval(timer)
+    }
+  }, [success, navigate])
 
   // Success Screen
   if (success) {
@@ -105,11 +137,14 @@ export default function Signup() {
           <p className="text-sm text-secondary-500 mb-6">
             Please check your email for your temporary password and login to continue.
           </p>
+          <p className="text-sm text-temco-blue mb-4">
+            Redirecting to login in {countdown} seconds...
+          </p>
           <button 
             onClick={() => navigate('/login')}
             className="w-full bg-temco-blue text-white py-3 rounded-lg hover:bg-temco-blue/90 transition-colors font-medium"
           >
-            Go to Login
+            Go to Login Now
           </button>
           <p className="text-xs text-secondary-400 mt-6">© 2026 Temco Bank. All rights reserved.</p>
         </div>
@@ -227,7 +262,30 @@ export default function Signup() {
                 className="w-full px-4 py-3 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-temco-blue/30 focus:border-temco-blue outline-none transition-colors"
                 required
               />
-              <p className="text-xs text-secondary-500 mt-1">Your password will be sent to this email</p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-secondary-700 mb-1">Password <span className="text-temco-pink">*</span></label>
+              <input
+                type="password"
+                name="password"
+                value={formData.password}
+                onChange={handleChange}
+                placeholder="Min. 6 characters"
+                className="w-full px-4 py-3 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-temco-blue/30 focus:border-temco-blue outline-none transition-colors"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-secondary-700 mb-1">Confirm Password <span className="text-temco-pink">*</span></label>
+              <input
+                type="password"
+                name="confirmPassword"
+                value={formData.confirmPassword}
+                onChange={handleChange}
+                placeholder="Re-enter password"
+                className="w-full px-4 py-3 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-temco-blue/30 focus:border-temco-blue outline-none transition-colors"
+                required
+              />
             </div>
             <div className="flex gap-3 pt-2">
               <button
