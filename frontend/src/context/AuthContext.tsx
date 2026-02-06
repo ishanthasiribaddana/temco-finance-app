@@ -8,6 +8,7 @@ interface User {
   email: string;
   nic: string;
   roleId: number | null;
+  roleCode: string | null;
 }
 
 interface AuthContextType {
@@ -26,8 +27,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(() => localStorage.getItem('token'));
   const [isLoading, setIsLoading] = useState(true);
 
-  // Configure axios to include token in all requests
+  // Configure axios to include token and cookies in all requests
   useEffect(() => {
+    axios.defaults.withCredentials = true; // Send cookies for SSO
     if (token) {
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
     } else {

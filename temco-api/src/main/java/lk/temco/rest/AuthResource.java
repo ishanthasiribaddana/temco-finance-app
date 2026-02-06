@@ -1,7 +1,9 @@
 package lk.temco.rest;
 
 import javax.ejb.EJB;
+import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 import javax.ws.rs.*;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
@@ -9,6 +11,7 @@ import javax.ws.rs.core.Response;
 import lk.temco.ejb.AuthService;
 import lk.temco.entity.GeneralUserProfile;
 import lk.temco.entity.UserLogin;
+import lk.temco.entity.UserRole;
 import lk.temco.rest.dto.LoginRequest;
 import lk.temco.rest.dto.SignupRequest;
 import lk.temco.rest.dto.UserResponse;
@@ -25,9 +28,13 @@ public class AuthResource {
     @EJB
     private AuthService authService;
 
+    private static final String AUTH_COOKIE_NAME = "auth_token";
+    private static final String COOKIE_DOMAIN = ".temcobank.com";
+    private static final int COOKIE_MAX_AGE = 86400; // 24 hours
+
     @POST
     @Path("/login")
-    public Response login(LoginRequest request, @Context HttpServletRequest httpRequest) {
+    public Response login(LoginRequest request, @Context HttpServletRequest httpRequest, @Context HttpServletResponse httpResponse) {
         if (request.getUsername() == null || request.getPassword() == null) {
             return errorResponse(400, "Username and password are required");
         }
@@ -48,6 +55,7 @@ public class AuthResource {
 
         UserLogin user = result.user();
         GeneralUserProfile profile = user.getUserProfile();
+        UserRole role = user.getUserRole();
 
         Map<String, Object> response = new HashMap<>();
         response.put("success", true);
@@ -60,22 +68,41 @@ public class AuthResource {
             profile != null ? profile.getFullName() : "",
             profile != null ? profile.getEmail() : "",
             profile != null ? profile.getNic() : "",
-            user.getUserRoleId()
+            user.getUserRoleId(),
+            role != null ? role.getRoleCode() : null
         );
         response.put("user", userResponse);
+
+        // Set shared cookie for SSO across all subdomains
+        Cookie authCookie = new Cookie(AUTH_COOKIE_NAME, result.token());
+        authCookie.setDomain(COOKIE_DOMAIN);
+        authCookie.setPath("/");
+        authCookie.setHttpOnly(true);
+        authCookie.setSecure(true); // HTTPS only
+        authCookie.setMaxAge(COOKIE_MAX_AGE);
+        httpResponse.addCookie(authCookie);
 
         return Response.ok(response).build();
     }
 
     @POST
     @Path("/logout")
-    public Response logout(@HeaderParam("Authorization") String authHeader) {
+    public Response logout(@HeaderParam("Authorization") String authHeader, @Context HttpServletResponse httpResponse) {
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             return errorResponse(400, "No token provided");
         }
 
         String token = authHeader.substring(7);
         boolean success = authService.logout(token);
+
+        // Clear the SSO cookie
+        Cookie authCookie = new Cookie(AUTH_COOKIE_NAME, "");
+        authCookie.setDomain(COOKIE_DOMAIN);
+        authCookie.setPath("/");
+        authCookie.setHttpOnly(true);
+        authCookie.setSecure(true);
+        authCookie.setMaxAge(0); // Delete cookie
+        httpResponse.addCookie(authCookie);
 
         Map<String, Object> response = new HashMap<>();
         response.put("success", success);
@@ -92,7 +119,7 @@ public class AuthResource {
         }
 
         String token = authHeader.substring(7);
-        Optional<UserLogin> userOpt = authService.validateToken(token);
+        Optional<UserLogin> userOpt = authService.validateTokenFresh(token);
 
         if (userOpt.isEmpty()) {
             return errorResponse(401, "Invalid or expired token");
@@ -100,6 +127,7 @@ public class AuthResource {
 
         UserLogin user = userOpt.get();
         GeneralUserProfile profile = user.getUserProfile();
+        UserRole role = user.getUserRole();
 
         UserResponse userResponse = new UserResponse(
             user.getId(),
@@ -107,7 +135,8 @@ public class AuthResource {
             profile != null ? profile.getFullName() : "",
             profile != null ? profile.getEmail() : "",
             profile != null ? profile.getNic() : "",
-            user.getUserRoleId()
+            user.getUserRoleId(),
+            role != null ? role.getRoleCode() : null
         );
 
         Map<String, Object> response = new HashMap<>();
