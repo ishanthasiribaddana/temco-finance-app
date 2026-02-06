@@ -59,13 +59,11 @@ public class FlywayMigrationRunner {
     private void assignSuperAdminRole() {
         LOGGER.info("=== Assigning Super Admin Role ===");
         try (var conn = dataSource.getConnection()) {
-            // Ensure Super Admin role has correct roleCode
+            // Ensure Super Admin role exists (id=10, name='Super Admin')
             try (var stmt = conn.prepareStatement(
-                "UPDATE user_role SET role_code = 'SUPER_ADMIN' WHERE id = 10 AND (role_code IS NULL OR role_code != 'SUPER_ADMIN')")) {
+                "INSERT INTO user_role (id, name) VALUES (10, 'Super Admin') ON DUPLICATE KEY UPDATE name = 'Super Admin'")) {
                 int updated = stmt.executeUpdate();
-                if (updated > 0) {
-                    LOGGER.info("Updated Super Admin role_code: " + updated + " row(s)");
-                }
+                LOGGER.info("Super Admin role ensured: " + updated + " row(s)");
             }
             
             // Assign Super Admin role to user

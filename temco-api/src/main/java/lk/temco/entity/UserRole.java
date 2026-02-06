@@ -10,25 +10,18 @@ public class UserRole {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    @Column(name = "role_name")
-    private String roleName;
-
-    @Column(name = "role_code")
-    private String roleCode;
-
-    @Column(name = "is_active")
-    private Boolean isActive;
+    @Column(name = "name")
+    private String name;
 
     // Getters and Setters
     public Integer getId() { return id; }
     public void setId(Integer id) { this.id = id; }
 
-    public String getRoleName() { return roleName; }
-    public void setRoleName(String roleName) { this.roleName = roleName; }
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
 
-    public String getRoleCode() { return roleCode; }
-    public void setRoleCode(String roleCode) { this.roleCode = roleCode; }
-
-    public Boolean getIsActive() { return isActive; }
-    public void setIsActive(Boolean isActive) { this.isActive = isActive; }
+    // Convenience method for SSO - Super Admin check
+    public boolean isSuperAdmin() {
+        return id != null && id.equals(10);
+    }
 }

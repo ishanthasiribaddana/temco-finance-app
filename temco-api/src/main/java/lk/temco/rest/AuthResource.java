@@ -69,7 +69,7 @@ public class AuthResource {
             profile != null ? profile.getEmail() : "",
             profile != null ? profile.getNic() : "",
             user.getUserRoleId(),
-            role != null ? role.getRoleCode() : null
+            role != null ? role.getName() : null
         );
         response.put("user", userResponse);
 
@@ -136,7 +136,7 @@ public class AuthResource {
             profile != null ? profile.getEmail() : "",
             profile != null ? profile.getNic() : "",
             user.getUserRoleId(),
-            role != null ? role.getRoleCode() : null
+            role != null ? role.getName() : null
         );
 
         Map<String, Object> response = new HashMap<>();
