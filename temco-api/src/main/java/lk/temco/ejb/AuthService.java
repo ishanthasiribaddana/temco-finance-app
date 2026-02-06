@@ -1,6 +1,8 @@
 package lk.temco.ejb;
 
 import javax.ejb.Stateless;
+import javax.ejb.TransactionAttribute;
+import javax.ejb.TransactionAttributeType;
 import javax.persistence.EntityManager;
 import javax.persistence.PersistenceContext;
 import javax.persistence.TypedQuery;
@@ -421,14 +423,20 @@ public class AuthService {
         return local.substring(0, 2) + "***@" + domain;
     }
 
-    private void logAttempt(String username, String ipAddress, String userAgent, boolean success, String reason) {
-        ComLoginAttempt attempt = new ComLoginAttempt();
-        attempt.setUsername(username);
-        attempt.setIpAddress(ipAddress);
-        attempt.setUserAgent(userAgent);
-        attempt.setAttemptTime(LocalDateTime.now());
-        attempt.setSuccess(success);
-        attempt.setFailureReason(reason);
-        em.persist(attempt);
+    @TransactionAttribute(TransactionAttributeType.REQUIRES_NEW)
+    public void logAttempt(String username, String ipAddress, String userAgent, boolean success, String reason) {
+        try {
+            ComLoginAttempt attempt = new ComLoginAttempt();
+            attempt.setUsername(username);
+            attempt.setIpAddress(ipAddress);
+            attempt.setUserAgent(userAgent);
+            attempt.setAttemptTime(LocalDateTime.now());
+            attempt.setSuccess(success);
+            attempt.setFailureReason(reason);
+            em.persist(attempt);
+        } catch (Exception e) {
+            // Log attempt failure should not break login flow
+            System.err.println("Failed to log login attempt: " + e.getMessage());
+        }
     }
 }
