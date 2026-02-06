@@ -11,7 +11,12 @@ import FiscalYears from './pages/fiscal/FiscalYears'
 import RevenueCenters from './pages/revenuecenter/RevenueCenters'
 import BankReconciliation from './pages/reconciliation/BankReconciliation'
 import Reports from './pages/reports/Reports'
-import Settings from './pages/Settings'
+import SettingsLayout from './components/SettingsLayout'
+import Profile from './pages/settings/Profile'
+import Security from './pages/settings/Security'
+import UserManagement from './pages/settings/UserManagement'
+import RoleManagement from './pages/settings/RoleManagement'
+import System from './pages/settings/System'
 import Login from './pages/Login'
 import Signup from './pages/Signup'
 
@@ -36,7 +41,14 @@ function App() {
             <Route path="revenue-centers/*" element={<RevenueCenters />} />
             <Route path="reconciliation/*" element={<BankReconciliation />} />
             <Route path="reports/*" element={<Reports />} />
-            <Route path="settings" element={<Settings />} />
+            <Route path="settings" element={<SettingsLayout />}>
+              <Route index element={<Profile />} />
+              <Route path="profile" element={<Profile />} />
+              <Route path="security" element={<Security />} />
+              <Route path="users" element={<UserManagement />} />
+              <Route path="roles" element={<RoleManagement />} />
+              <Route path="system" element={<System />} />
+            </Route>
           </Route>
         </Routes>
       </Router>

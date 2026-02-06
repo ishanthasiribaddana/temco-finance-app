@@ -24,9 +24,9 @@ public class AuthService {
     public record VerifyOtpResult(boolean success, String error) {}
 
     public LoginResult login(String username, String password, String ipAddress, String userAgent) {
-        // Find user
+        // Find user with profile and role
         TypedQuery<UserLogin> query = em.createQuery(
-            "SELECT u FROM UserLogin u LEFT JOIN FETCH u.userProfile WHERE u.username = :username", 
+            "SELECT u FROM UserLogin u LEFT JOIN FETCH u.userProfile LEFT JOIN FETCH u.userRole WHERE u.username = :username", 
             UserLogin.class
         );
         query.setParameter("username", username);
@@ -133,6 +133,31 @@ public class AuthService {
         try {
             ComSessionToken sessionToken = query.getSingleResult();
             return Optional.of(sessionToken.getUserLogin());
+        } catch (Exception e) {
+            return Optional.empty();
+        }
+    }
+
+    public Optional<UserLogin> validateTokenFresh(String token) {
+        TypedQuery<ComSessionToken> query = em.createQuery(
+            "SELECT t FROM ComSessionToken t " +
+            "WHERE t.tokenHash = :token AND t.isActive = true AND t.expiresAt > :now",
+            ComSessionToken.class
+        );
+        query.setParameter("token", token);
+        query.setParameter("now", LocalDateTime.now());
+
+        try {
+            ComSessionToken sessionToken = query.getSingleResult();
+            Integer userId = sessionToken.getUserLoginId();
+            
+            // Fresh query to get user with latest data including role
+            UserLogin user = em.createQuery(
+                "SELECT u FROM UserLogin u LEFT JOIN FETCH u.userProfile LEFT JOIN FETCH u.userRole WHERE u.id = :id",
+                UserLogin.class
+            ).setParameter("id", userId).getSingleResult();
+            
+            return Optional.of(user);
         } catch (Exception e) {
             return Optional.empty();
         }

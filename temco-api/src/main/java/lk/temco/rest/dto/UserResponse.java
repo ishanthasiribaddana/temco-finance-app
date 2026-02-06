@@ -7,16 +7,18 @@ public class UserResponse {
     private String email;
     private String nic;
     private Integer roleId;
+    private String roleCode;
 
     public UserResponse() {}
 
-    public UserResponse(Integer id, String username, String fullName, String email, String nic, Integer roleId) {
+    public UserResponse(Integer id, String username, String fullName, String email, String nic, Integer roleId, String roleCode) {
         this.id = id;
         this.username = username;
         this.fullName = fullName;
         this.email = email;
         this.nic = nic;
         this.roleId = roleId;
+        this.roleCode = roleCode;
     }
 
     public Integer getId() { return id; }
@@ -36,4 +38,7 @@ public class UserResponse {
 
     public Integer getRoleId() { return roleId; }
     public void setRoleId(Integer roleId) { this.roleId = roleId; }
+
+    public String getRoleCode() { return roleCode; }
+    public void setRoleCode(String roleCode) { this.roleCode = roleCode; }
 }

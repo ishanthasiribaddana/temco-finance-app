@@ -32,8 +32,6 @@ public class UserLogin {
     @Column(name = "general_user_profile_id")
     private Integer generalUserProfileId;
 
-    @Column(name = "general_organization_profile_id")
-    private Integer generalOrganizationProfileId;
 
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
@@ -74,8 +72,6 @@ public class UserLogin {
     public Integer getGeneralUserProfileId() { return generalUserProfileId; }
     public void setGeneralUserProfileId(Integer generalUserProfileId) { this.generalUserProfileId = generalUserProfileId; }
 
-    public Integer getGeneralOrganizationProfileId() { return generalOrganizationProfileId; }
-    public void setGeneralOrganizationProfileId(Integer generalOrganizationProfileId) { this.generalOrganizationProfileId = generalOrganizationProfileId; }
 
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
