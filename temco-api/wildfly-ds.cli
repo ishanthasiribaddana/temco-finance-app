@@ -1,0 +1,28 @@
+# WildFly CLI script to configure MariaDB datasource
+# Run this in WildFly CLI: jboss-cli.sh --connect --file=wildfly-ds.cli
+
+# Add MariaDB driver module (run this first if driver not installed)
+# module add --name=org.mariadb --resources=mariadb-java-client-3.3.2.jar --dependencies=javax.api,javax.transaction.api
+
+# Add the JDBC driver
+/subsystem=datasources/jdbc-driver=mariadb:add( \
+    driver-name=mariadb, \
+    driver-module-name=org.mariadb, \
+    driver-class-name=org.mariadb.jdbc.Driver \
+)
+
+# Add the datasource
+/subsystem=datasources/data-source=TemcoDS:add( \
+    jndi-name=java:/TemcoDS, \
+    driver-name=mariadb, \
+    connection-url=jdbc:mariadb://127.0.0.1:3306/temco_system, \
+    user-name=root, \
+    password=temco123, \
+    min-pool-size=5, \
+    max-pool-size=20, \
+    enabled=true, \
+    use-java-context=true \
+)
+
+# Test the connection
+/subsystem=datasources/data-source=TemcoDS:test-connection-in-pool

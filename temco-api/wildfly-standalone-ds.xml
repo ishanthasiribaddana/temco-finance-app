@@ -1,0 +1,27 @@
+<!-- Add this datasource configuration to WildFly standalone.xml -->
+<!-- Location: {WILDFLY_HOME}/standalone/configuration/standalone.xml -->
+<!-- Insert inside <subsystem xmlns="urn:jboss:domain:datasources:..."> section -->
+
+<datasource jndi-name="java:/TemcoDS" pool-name="TemcoDS" enabled="true" use-java-context="true">
+    <connection-url>jdbc:mariadb://127.0.0.1:3306/temco_system</connection-url>
+    <driver>mariadb</driver>
+    <pool>
+        <min-pool-size>5</min-pool-size>
+        <max-pool-size>20</max-pool-size>
+    </pool>
+    <security>
+        <user-name>root</user-name>
+        <password>temco123</password>
+    </security>
+    <validation>
+        <valid-connection-checker class-name="org.jboss.jca.adapters.jdbc.extensions.mysql.MySQLValidConnectionChecker"/>
+        <exception-sorter class-name="org.jboss.jca.adapters.jdbc.extensions.mysql.MySQLExceptionSorter"/>
+    </validation>
+</datasource>
+
+<!-- Also add the driver inside <drivers> section: -->
+<!--
+<driver name="mariadb" module="org.mariadb">
+    <driver-class>org.mariadb.jdbc.Driver</driver-class>
+</driver>
+-->
