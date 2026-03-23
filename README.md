@@ -20,11 +20,11 @@ Finance and Accounting Application for TEMCO Bank.
 │                                    │                                     │
 │  ┌─────────────────────────────────────────────────────────────────┐    │
 │  │                      DOCKER CONTAINERS                           │    │
-│  │  ┌─────────────────────┐   ┌─────────────────────────────────┐  │    │
-│  │  │  finance-frontend   │   │     finance-wildfly              │  │    │
-│  │  │  (nginx:alpine)     │──▶│     (WildFly 31 + JDK17)         │  │    │
-│  │  │  Port: 80 → 8091    │API│     Port: 8080 → 8086            │  │    │
-│  │  └─────────────────────┘   └─────────────────────────────────┘  │    │
+│  │  ┌─────────────────────┐                                        │    │
+│  │  │  finance-frontend   │   Auth via SSOService (:8085)          │    │
+│  │  │  (nginx:alpine)     │   Student API via api-server (:8086)   │    │
+│  │  │  Port: 80 → 8091    │                                        │    │
+│  │  └─────────────────────┘                                        │    │
 │  └─────────────────────────────────────────────────────────────────┘    │
 │                                    │                                     │
 │  ┌─────────────────────────────────▼───────────────────────────────┐    │
@@ -38,41 +38,48 @@ Finance and Accounting Application for TEMCO Bank.
 
 ```
 FinanceApp/
-├── Backend/                          # Java WildFly Application
-│   ├── src/main/java/lk/temcobank/finance/
-│   │   ├── entity/                   # JPA Entities
-│   │   ├── dto/                      # Data Transfer Objects
-│   │   ├── repository/               # Data Access Layer
-│   │   ├── service/                  # Business Logic
-│   │   ├── resource/                 # REST Controllers
-│   │   ├── security/                 # JWT/Auth
-│   │   └── config/                   # App Configuration
-│   ├── src/main/resources/META-INF/persistence.xml
-│   └── pom.xml
+├── api-server/                       # Node.js Express API Server
+│   ├── server.js                     # Main server (port 8086)
+│   └── package.json
 │
 ├── frontend/                         # React TypeScript App
 │   ├── src/
 │   │   ├── components/               # Reusable UI components
-│   │   ├── pages/                    # 38 screens across 10 modules
+│   │   ├── pages/                    # Page components
 │   │   ├── services/                 # API calls
 │   │   ├── hooks/                    # Custom React hooks
 │   │   ├── context/                  # State management
 │   │   ├── types/                    # TypeScript interfaces
 │   │   └── utils/                    # Helper functions
+│   ├── vite.config.ts
 │   ├── package.json
 │   └── tailwind.config.js
 │
-├── docker/                           # Docker Configuration
-│   ├── docker-compose.finance.yml    # Main compose file
-│   ├── Dockerfile.wildfly            # WildFly image build
-│   ├── finance-nginx.conf            # Nginx routing config
-│   ├── standalone.xml                # WildFly datasource config
-│   └── deployments/finance/          # WAR deployment folder
+├── Backend/                          # Java WildFly Application (legacy)
+│   ├── src/main/java/
+│   └── pom.xml
 │
-├── schema/                           # Database Versioning
-│   └── V2.1__finance_schema.sql
+├── docker/                           # Docker Configuration
+│   ├── Dockerfile.frontend           # Nginx frontend image
+│   ├── Dockerfile.wildfly            # WildFly image (legacy)
+│   ├── nginx.conf                    # Nginx routing config
+│   └── docker-compose.yml            # Legacy single compose
+│
+├── docker-compose.base.yml           # Base Docker config
+├── docker-compose.local.yml          # Local dev overrides
+├── docker-compose.prod.yml           # Production overrides
+├── docker-dev.ps1                    # Docker helper script
+├── .env.local.example                # Environment template
+│
+├── schema/                           # Database SQL migrations
+│   ├── V2.1__finance_schema.sql
+│   └── V2.9__partner_type_tables.sql
+│
+├── nginx/                            # Host Nginx configs
+│   └── temco.conf
 │
 └── docs/                             # Documentation
+    └── SERVER_ARCHITECTURE.md
 ```
 
 ## Database Tables (14)
@@ -96,36 +103,45 @@ FinanceApp/
 
 ## Quick Start
 
-### Backend Development
-
-```bash
-cd Backend
-mvn clean package
-# Deploy temco-finance.war to WildFly
-```
-
 ### Frontend Development
 
 ```bash
 cd frontend
 npm install
 npm run dev
+# Opens at http://localhost:3002
+```
+
+### API Server
+
+```bash
+cd api-server
+npm install
+npm start
+# Runs on http://localhost:8086
 ```
 
 ### Docker Deployment
 
 ```bash
-cd docker
-docker-compose -f docker-compose.finance.yml up -d
+# Local dev
+.\docker-dev.ps1 up
+
+# Or manually:
+docker-compose -f docker-compose.base.yml -f docker-compose.local.yml up -d
+
+# Production
+docker-compose -f docker-compose.base.yml -f docker-compose.prod.yml up -d
 ```
 
 ## Port Mapping
 
-| Service | Internal Port | External Port |
-|---------|--------------|---------------|
-| finance-frontend | 80 | 8091 |
-| finance-wildfly | 8080 | 8086 |
-| finance-wildfly (admin) | 9990 | 9993 |
+| Service | Dev Port | Prod Port |
+|---------|----------|-----------|
+| Frontend (Vite) | 3002 | — |
+| Frontend (Nginx) | — | 8091 |
+| API Server (Node.js) | 8086 | 8086 |
+| Auth (SSOService) | 8085 | 8085 |
 
 ## API Endpoints
 
@@ -138,6 +154,8 @@ Base URL: `/api`
 | `GET /api/journal-entries` | Journal Entries |
 | `GET /api/vouchers` | Vouchers |
 | `GET /api/partners` | Partners |
+| `GET /api/students` | Student records |
+| `GET /api/student-lookup` | Student search |
 
 ## License
 

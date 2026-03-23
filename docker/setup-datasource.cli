@@ -1,0 +1,7 @@
+embed-server --std-out=echo
+
+/subsystem=datasources/jdbc-driver=mysql:add(driver-name=mysql,driver-module-name=com.mysql,driver-class-name=com.mysql.cj.jdbc.Driver)
+
+data-source add --name=TemcoDS --jndi-name=java:jboss/datasources/TemcoDS --driver-name=mysql --connection-url=jdbc:mysql://host.docker.internal:3306/temco_system --user-name=root --password=6qZB6d@pIvj --min-pool-size=5 --max-pool-size=20 --enabled=true
+
+stop-embedded-server

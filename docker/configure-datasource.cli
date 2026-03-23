@@ -1,0 +1,9 @@
+embed-server --std-out=echo
+
+# Add MariaDB driver
+/subsystem=datasources/jdbc-driver=mariadb:add(driver-name=mariadb,driver-module-name=org.mariadb,driver-class-name=org.mariadb.jdbc.Driver)
+
+# Add datasource with JNDI name java:/TemcoDS - using root user for production
+/subsystem=datasources/data-source=TemcoDS:add(jndi-name="java:/TemcoDS",driver-name=mariadb,connection-url="jdbc:mariadb://host.docker.internal:3306/temco_system",user-name=root,password=temco123,min-pool-size=5,max-pool-size=20,enabled=true)
+
+stop-embedded-server

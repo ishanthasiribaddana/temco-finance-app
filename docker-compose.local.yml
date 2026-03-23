@@ -1,0 +1,98 @@
+# =============================================================================
+# FINANCE APP - Local Development Overrides
+# =============================================================================
+# Usage: docker-compose -f docker-compose.base.yml -f docker-compose.local.yml up -d
+# =============================================================================
+
+services:
+  # ---------------------------------------------------------------------------
+  # MariaDB Database (Local only)
+  # ---------------------------------------------------------------------------
+  mariadb:
+    image: mariadb:10.6
+    container_name: finance-mariadb
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-6qZB6d@pIvj}
+      MYSQL_DATABASE: temco_system
+    ports:
+      - "127.0.0.1:3307:3306"
+    volumes:
+      - mariadb_data:/var/lib/mysql
+      - ./schema:/docker-entrypoint-initdb.d:ro
+    networks:
+      - temco-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p${DB_PASSWORD:-6qZB6d@pIvj}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ---------------------------------------------------------------------------
+  # WildFly - Local overrides
+  # ---------------------------------------------------------------------------
+  wildfly:
+    container_name: finance-wildfly
+    environment:
+      - DB_HOST=mariadb
+      - DB_PASSWORD=${DB_PASSWORD:-6qZB6d@pIvj}
+    ports:
+      - "127.0.0.1:8087:8080"    # FinanceApp WildFly
+      - "127.0.0.1:9991:9990"    # Admin console
+      - "127.0.0.1:8787:8787"    # Debug port
+    volumes:
+      - ./Backend/target:/opt/jboss/wildfly/standalone/deployments
+    depends_on:
+      mariadb:
+        condition: service_healthy
+
+  # ---------------------------------------------------------------------------
+  # Frontend - Development mode with hot reload
+  # Auth via SSOService on port 8085, Finance API on port 8087
+  # ---------------------------------------------------------------------------
+  frontend:
+    image: node:18-alpine
+    container_name: finance-frontend
+    restart: unless-stopped
+    working_dir: /app
+    environment:
+      - VITE_API_URL=http://localhost:8087/temco-api/api
+      - VITE_SSO_API_URL=http://localhost:8085/temco-api/api
+    ports:
+      - "127.0.0.1:3002:3000"
+    volumes:
+      - ./frontend:/app
+      - frontend_node_modules:/app/node_modules
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
+    networks:
+      - temco-network
+
+  # ---------------------------------------------------------------------------
+  # Redis - Local overrides
+  # ---------------------------------------------------------------------------
+  redis:
+    container_name: finance-redis
+    ports:
+      - "127.0.0.1:6380:6379"
+
+  # ---------------------------------------------------------------------------
+  # phpMyAdmin - Database UI (Local only)
+  # ---------------------------------------------------------------------------
+  phpmyadmin:
+    image: phpmyadmin:latest
+    container_name: finance-phpmyadmin
+    restart: unless-stopped
+    environment:
+      PMA_HOST: mariadb
+      PMA_USER: root
+      PMA_PASSWORD: ${DB_PASSWORD:-6qZB6d@pIvj}
+    ports:
+      - "127.0.0.1:8082:80"
+    depends_on:
+      - mariadb
+    networks:
+      - temco-network
+
+volumes:
+  mariadb_data:
+  frontend_node_modules:

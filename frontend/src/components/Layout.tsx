@@ -1,4 +1,4 @@
-import { Outlet, Link, useLocation } from 'react-router-dom'
+import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom'
 import { 
   LayoutDashboard, 
   BookOpen, 
@@ -10,9 +10,13 @@ import {
   Scale, 
   BarChart3,
   LogOut,
-  Menu
+  Menu,
+  Settings,
+  ChevronDown,
+  User
 } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
+import { useAuth } from '../context/AuthContext'
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
@@ -28,7 +32,30 @@ const navigation = [
 
 export default function Layout() {
   const location = useLocation()
+  const navigate = useNavigate()
+  const { user, logout } = useAuth()
   const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [dropdownOpen, setDropdownOpen] = useState(false)
+  const dropdownRef = useRef<HTMLDivElement>(null)
+
+  // Get first name from fullName
+  const firstName = user?.fullName?.split(' ')[0] || 'User'
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  const handleLogout = async () => {
+    await logout()
+    navigate('/login')
+  }
 
   return (
     <div className="min-h-screen bg-secondary-50">
@@ -60,7 +87,7 @@ export default function Layout() {
           })}
         </nav>
         <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-secondary-200">
-          <button className="flex items-center w-full px-3 py-2 text-sm font-medium text-secondary-600 hover:bg-secondary-100 rounded-lg">
+          <button onClick={handleLogout} className="flex items-center w-full px-3 py-2 text-sm font-medium text-secondary-600 hover:bg-secondary-100 rounded-lg">
             <LogOut className="w-5 h-5 mr-3" />
             Sign Out
           </button>
@@ -75,7 +102,38 @@ export default function Layout() {
               <Menu className="w-6 h-6" />
             </button>
             <div className="flex items-center space-x-4">
-              <span className="text-sm text-secondary-600">Admin User</span>
+              {/* User Dropdown */}
+              <div className="relative" ref={dropdownRef}>
+                <button
+                  onClick={() => setDropdownOpen(!dropdownOpen)}
+                  className="flex items-center space-x-2 px-3 py-2 rounded-lg hover:bg-secondary-100 transition-colors"
+                >
+                  <User className="w-5 h-5 text-secondary-500" />
+                  <span className="text-sm font-medium text-secondary-700">{firstName}</span>
+                  <ChevronDown className={`w-4 h-4 text-secondary-500 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
+                </button>
+
+                {/* Dropdown Menu */}
+                {dropdownOpen && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-secondary-200 py-1 z-50">
+                    <Link
+                      to="/settings"
+                      onClick={() => setDropdownOpen(false)}
+                      className="flex items-center px-4 py-2 text-sm text-secondary-700 hover:bg-secondary-50"
+                    >
+                      <Settings className="w-4 h-4 mr-3" />
+                      Settings
+                    </Link>
+                    <button
+                      onClick={handleLogout}
+                      className="flex items-center w-full px-4 py-2 text-sm text-secondary-700 hover:bg-secondary-50"
+                    >
+                      <LogOut className="w-4 h-4 mr-3" />
+                      Logout
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </header>

@@ -95,15 +95,9 @@ finance.temcobank.com  →  109.123.227.166
 
 ## SSL Certificate
 
-If using Let's Encrypt wildcard certificate:
-```bash
-sudo certbot certonly --dns-cloudflare -d "*.temcobank.com" -d temcobank.com
-```
-
-Or add to existing certificate:
-```bash
-sudo certbot --expand -d finance.temcobank.com
-```
+All subdomains use a shared **Cloudflare Origin Certificate** (`*.temcobank.com`, valid until 2041).
+The cert is already installed at `/etc/ssl/cloudflare/temcobank.com.pem` and `.key`.
+No Certbot step needed for new subdomains.
 
 ## Container Management
 

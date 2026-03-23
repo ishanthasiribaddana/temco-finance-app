@@ -1,14 +1,19 @@
 {
   "name": "temco-finance-api",
-  "version": "1.0.0",
+  "version": "2.9.0",
   "description": "TEMCO Finance API Server",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
-    "express": "^4.18.2",
-    "mysql2": "^3.6.5",
-    "cors": "^2.8.5"
-  }
+    "bcrypt": "^6.0.0",
+    "cors": "^2.8.6",
+    "express": "^4.22.1",
+    "mysql2": "^3.16.3"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs"
 }

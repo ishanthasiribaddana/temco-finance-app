@@ -1,0 +1,45 @@
+# =============================================================================
+# FINANCE APP - Base Configuration
+# =============================================================================
+# Shared service definitions for local and production environments.
+#
+# Local Dev:  docker-compose -f docker-compose.base.yml -f docker-compose.local.yml up -d
+# Production: docker-compose -f docker-compose.base.yml -f docker-compose.prod.yml up -d
+# =============================================================================
+
+services:
+  # ---------------------------------------------------------------------------
+  # BACKEND (WildFly) - JAX-RS API Server
+  # ---------------------------------------------------------------------------
+  wildfly:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.wildfly
+    restart: unless-stopped
+    environment:
+      - DB_PORT=3306
+      - DB_NAME=temco_system
+      - DB_USER=root
+      - TZ=Asia/Colombo
+      - JAVA_OPTS=-Xms512m -Xmx1024m -XX:MetaspaceSize=96M -XX:MaxMetaspaceSize=256m
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/temco-api/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - temco-network
+
+  # ---------------------------------------------------------------------------
+  # REDIS (Optional Cache)
+  # ---------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    networks:
+      - temco-network
+
+networks:
+  temco-network:
+    external: true

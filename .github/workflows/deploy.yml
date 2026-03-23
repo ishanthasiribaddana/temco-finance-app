@@ -1,8 +1,10 @@
 # =============================================================================
-# TEMCO Finance App - CI/CD Pipeline
+# TEMCO Finance App - CI/CD Pipeline (Docker-based Deployment)
 # =============================================================================
 # Triggers: Push to master branch or manual dispatch
 # Deploys to: 109.123.227.166 (production server)
+# Backend: WildFly 26.1.3 (Java EE) in Docker
+# Frontend: React + Vite + Nginx in Docker
 # =============================================================================
 
 name: Deploy Finance App
@@ -11,9 +13,11 @@ on:
   push:
     branches:
       - master
-    paths-ignore:
-      - '**.md'
-      - 'docs/**'
+    paths:
+      - 'temco-api/**'
+      - 'frontend/**'
+      - 'docker/**'
+      - '.github/workflows/deploy.yml'
   workflow_dispatch:
     inputs:
       environment:
@@ -27,13 +31,44 @@ on:
 env:
   DOCKER_BUILDKIT: 1
   COMPOSE_DOCKER_CLI_BUILD: 1
+  JAVA_VERSION: '17'
+  NODE_VERSION: '20'
 
 jobs:
   # ===========================================================================
-  # JOB 1: Build and Test
+  # JOB 1: Build Java EE Backend (WildFly WAR)
   # ===========================================================================
-  build:
-    name: Build & Test
+  build-backend:
+    name: Build Java EE Backend
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Java JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Build WAR with Maven
+        working-directory: ./temco-api
+        run: mvn clean package -DskipTests -B
+
+      - name: Upload WAR artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: temco-api-war
+          path: temco-api/target/temco-api.war
+          retention-days: 1
+
+  # ===========================================================================
+  # JOB 2: Build Frontend (React + Vite)
+  # ===========================================================================
+  build-frontend:
+    name: Build Frontend
     runs-on: ubuntu-latest
     
     steps:
@@ -43,21 +78,19 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
 
       - name: Install frontend dependencies
         working-directory: ./frontend
-        run: npm install
+        run: npm ci
 
       - name: Build frontend
         working-directory: ./frontend
         run: npm run build
 
-      - name: Install API dependencies
-        working-directory: ./api-server
-        run: npm install --omit=dev
-
-      - name: Upload build artifacts
+      - name: Upload frontend build
         uses: actions/upload-artifact@v4
         with:
           name: frontend-build
@@ -65,86 +98,98 @@ jobs:
           retention-days: 1
 
   # ===========================================================================
-  # JOB 2: Deploy to Production
+  # JOB 3: Deploy to Production (Docker)
   # ===========================================================================
   deploy:
-    name: Deploy to Production
+    name: Deploy to Production (Docker)
     runs-on: ubuntu-latest
-    needs: build
+    needs: [build-backend, build-frontend]
     environment: finance-production
     
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Download build artifacts
+      - name: Download WAR artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: temco-api-war
+          path: ./temco-api/target
+
+      - name: Download frontend build
         uses: actions/download-artifact@v4
         with:
           name: frontend-build
-          path: frontend/dist
+          path: ./frontend/dist
 
       - name: Setup SSH Key
-        uses: webfactory/ssh-agent@v0.9.0
-        with:
-          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
-
-      - name: Add server to known hosts
+        env:
+          SSH_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
         run: |
           mkdir -p ~/.ssh
+          echo "$SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
 
-      - name: Deploy to Production Server
+      - name: Sync code to server
         env:
           SERVER_HOST: ${{ secrets.SERVER_HOST }}
           SERVER_USER: ${{ secrets.SERVER_USER }}
-          APP_DIR: /opt/temco/finance-app
-          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
         run: |
-          echo "🚀 Starting deployment to production..."
+          echo "� Syncing code to production server..."
           
-          # Create deployment script
-          cat << 'DEPLOY_SCRIPT' > deploy_remote.sh
-          #!/bin/bash
-          set -e
+          # Create deployment package
+          tar -czf deploy-package.tar.gz \
+            --exclude='.git' \
+            --exclude='node_modules' \
+            --exclude='*.log' \
+            temco-api/target/temco-api.war \
+            frontend/dist \
+            docker/
           
-          APP_DIR="/opt/temco/finance-app"
-          GIT_REPO="https://github.com/ishanthasiribaddana/temco-finance-app.git"
+          # Copy to server
+          scp deploy-package.tar.gz $SERVER_USER@$SERVER_HOST:/tmp/deploy-package.tar.gz
           
-          echo "📦 Setting up application directory..."
-          if [ ! -d "$APP_DIR" ]; then
-            echo "Creating directory and cloning repository..."
-            sudo mkdir -p /opt/temco
-            cd /opt/temco
-            sudo git clone $GIT_REPO finance-app
-            sudo chown -R $USER:$USER $APP_DIR
-          fi
+          echo "✅ Code synced to server"
+
+      - name: Deploy Docker Containers
+        env:
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}
+          SERVER_USER: ${{ secrets.SERVER_USER }}
+        run: |
+          echo "🐳 Deploying Docker containers..."
           
-          echo "📦 Pulling latest code..."
-          cd $APP_DIR
-          git fetch origin
-          git reset --hard origin/master
-          
-          echo "🐳 Rebuilding Docker containers..."
-          cd $APP_DIR/docker
-          docker-compose -f docker-compose.finance.yml down || true
-          docker-compose -f docker-compose.finance.yml up -d --build --force-recreate
-          
-          echo "⏳ Waiting for containers to be healthy..."
-          sleep 10
-          
-          echo "✅ Checking container status..."
-          docker ps --filter "name=finance" --format "table {{.Names}}\t{{.Status}}"
-          
-          echo "🏥 Running health checks..."
-          curl -sf http://127.0.0.1:8086/api/health || echo "⚠️ API health check failed"
-          curl -sf http://127.0.0.1:8091/health || echo "⚠️ Frontend health check failed"
-          
-          echo "🎉 Deployment complete!"
-          DEPLOY_SCRIPT
-          
-          # Copy and execute deployment script
-          scp deploy_remote.sh $SERVER_USER@$SERVER_HOST:/tmp/deploy_finance.sh
-          ssh $SERVER_USER@$SERVER_HOST "chmod +x /tmp/deploy_finance.sh && sudo /tmp/deploy_finance.sh"
+          ssh $SERVER_USER@$SERVER_HOST << 'EOF'
+            set -e
+            APP_DIR="/opt/temco/finance-app"
+            
+            echo "📦 Extracting deployment package..."
+            cd $APP_DIR
+            tar -xzf /tmp/deploy-package.tar.gz --strip-components=0
+            
+            echo "🛑 Stopping existing containers..."
+            docker-compose -f docker/docker-compose.yml down --remove-orphans 2>/dev/null || true
+            
+            echo "🧹 Force removing old containers if they exist..."
+            docker rm -f finance-api finance-frontend 2>/dev/null || true
+            
+            echo "🔨 Building Docker images..."
+            docker-compose -f docker/docker-compose.yml build --no-cache
+            
+            echo "🚀 Starting containers..."
+            docker-compose -f docker/docker-compose.yml up -d
+            
+            echo "⏳ Waiting for containers to be healthy..."
+            sleep 30
+            
+            echo "📊 Container status:"
+            docker-compose -f docker/docker-compose.yml ps
+            
+            echo "🧹 Cleaning up old images..."
+            docker image prune -f
+            
+            echo "✅ Docker deployment complete!"
+          EOF
 
       - name: Verify Deployment
         env:
@@ -152,13 +197,34 @@ jobs:
           SERVER_USER: ${{ secrets.SERVER_USER }}
         run: |
           echo "🔍 Verifying deployment..."
-          ssh $SERVER_USER@$SERVER_HOST "docker ps --filter 'name=finance' --format '{{.Names}}: {{.Status}}'"
+          ssh $SERVER_USER@$SERVER_HOST << 'EOF'
+            echo "=== Docker Containers ==="
+            docker ps --filter "name=finance" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+            
+            echo ""
+            echo "=== Health Checks ==="
+            # API health check
+            if curl -sf http://127.0.0.1:8087/temco-api/api/health > /dev/null 2>&1; then
+              echo "✅ API: Healthy"
+            else
+              echo "⚠️ API: Starting up..."
+            fi
+            
+            # Frontend health check
+            if curl -sf http://127.0.0.1:8091/ > /dev/null 2>&1; then
+              echo "✅ Frontend: Healthy"
+            else
+              echo "⚠️ Frontend: Starting up..."
+            fi
+          EOF
 
       - name: Notify Success
         if: success()
         run: |
           echo "✅ Finance App deployed successfully!"
           echo "🌐 URL: https://finance.temcobank.com"
+          echo "� Backend: WildFly (Java EE) in Docker"
+          echo "🎨 Frontend: React + Nginx in Docker"
 
       - name: Notify Failure
         if: failure()
@@ -167,7 +233,7 @@ jobs:
           exit 1
 
   # ===========================================================================
-  # JOB 3: Post-deployment Verification
+  # JOB 4: Post-deployment Verification
   # ===========================================================================
   verify:
     name: Post-deployment Verification
@@ -178,13 +244,13 @@ jobs:
       - name: Wait for services to stabilize
         run: sleep 30
 
-      - name: Health Check - API
+      - name: Health Check - Java EE API
         run: |
           response=$(curl -s -o /dev/null -w "%{http_code}" https://finance.temcobank.com/api/health || echo "000")
           if [ "$response" = "200" ]; then
-            echo "✅ API health check passed"
+            echo "✅ Java EE API health check passed"
           else
-            echo "⚠️ API health check returned: $response"
+            echo "⚠️ API health check returned: $response (may still be starting)"
           fi
 
       - name: Health Check - Frontend
@@ -199,11 +265,13 @@ jobs:
       - name: Deployment Summary
         run: |
           echo "=========================================="
-          echo "  DEPLOYMENT SUMMARY"
+          echo "  DEPLOYMENT SUMMARY (v4.0.0 - Docker)"
           echo "=========================================="
           echo "Repository: ${{ github.repository }}"
           echo "Branch: ${{ github.ref_name }}"
           echo "Commit: ${{ github.sha }}"
           echo "Triggered by: ${{ github.actor }}"
+          echo "Backend: WildFly 26.1.3 (Java EE) in Docker"
+          echo "Frontend: React + Vite + Nginx in Docker"
           echo "URL: https://finance.temcobank.com"
           echo "=========================================="

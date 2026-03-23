@@ -1,0 +1,4 @@
+# Configure MySQL datasource for Finance App (Bootable JAR)
+# The mysql-datasource layer provides the driver automatically
+
+/subsystem=datasources/data-source=TemcoDS:add(jndi-name=java:jboss/datasources/TemcoDS,enabled=true,use-java-context=true,connection-url=jdbc:mysql://${env.MYSQL_HOST:localhost}:${env.MYSQL_PORT:3306}/${env.MYSQL_DATABASE:temco_system},driver-name=mysql,user-name=${env.MYSQL_USER:root},password=${env.MYSQL_PASSWORD:temco123},min-pool-size=5,max-pool-size=20)

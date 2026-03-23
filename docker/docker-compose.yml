@@ -1,0 +1,28 @@
+services:
+  # NOTE: finance-api (WildFly) has been removed.
+  # Auth is now handled by the independent SSOService at host.docker.internal:8085.
+  # See: F:\TemcoERP\SSOService
+
+  # Nginx + React Frontend
+  finance-frontend:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.frontend
+    container_name: finance-frontend
+    ports:
+      - "127.0.0.1:8091:80"
+    networks:
+      - temco-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+networks:
+  temco-network:
+    external: true
